@@ -494,9 +494,12 @@
 <!-- 🔊 Sound Toggle -->
 <button class="btn-sound" id="btnSoundToggle" title="Toggle Sound">🔊</button>
 
-<!-- Hidden BGM audio -->
+<!-- Hidden audio -->
 <audio id="bgm" loop preload="auto" style="display:none;">
   <source src="audio/bgm.mp3" type="audio/mpeg">
+</audio>
+<audio id="sfxCatch" preload="auto" style="display:none;">
+  <source src="audio/catch.mp3" type="audio/mpeg">
 </audio>
 
 <div id="app">
@@ -597,6 +600,7 @@
 //  AUDIO
 // ═══════════════════════════════════════════
 const bgm = document.getElementById('bgm');
+const sfxCatch = document.getElementById('sfxCatch');
 const btnSoundToggle = document.getElementById('btnSoundToggle');
 let soundOn = true;
 
@@ -612,16 +616,24 @@ function stopBGM() {
   bgm.currentTime = 0;
 }
 
+function playCatchSFX() {
+  if (soundOn) {
+    sfxCatch.currentTime = 0;
+    sfxCatch.play().catch(() => {});
+  }
+}
+
 btnSoundToggle.addEventListener('click', () => {
   soundOn = !soundOn;
   btnSoundToggle.textContent = soundOn ? '🔊' : '🔇';
   btnSoundToggle.classList.toggle('muted', !soundOn);
-  if (soundOn) {
-    if (state.gameActive) playBGM();
-  } else {
-    stopBGM();
-  }
+  if (soundOn) { playBGM(); }
+  else { stopBGM(); }
 });
+
+// Start BGM immediately on page load
+bgm.volume = 0.4;
+bgm.play().catch(() => {});
 
 // ═══════════════════════════════════════════
 //  STARFIELD BACKGROUND
@@ -770,7 +782,6 @@ planetCards.forEach(card => {
 
 backCharBtn.addEventListener('click', () => {
   showScreen('charSelect');
-  stopBGM();
 });
 
 // ═══════════════════════════════════════════
@@ -797,8 +808,6 @@ function startLevel(level) {
   spawnTarget();
   state.targetInterval = setInterval(spawnTarget, 1200);
   state.timerInterval = setInterval(tickTimer, 1000);
-
-  playBGM();
 }
 
 // ═══════════════════════════════════════════
@@ -865,6 +874,7 @@ function catchTarget(target, id, event) {
   state.score += 10;
   scoreDisplay.textContent = state.score;
 
+  playCatchSFX();
   spawnSparkles(event.clientX, event.clientY);
   spawnScorePop(event.clientX, event.clientY);
 
@@ -958,7 +968,6 @@ function endGame() {
   clearInterval(state.targetInterval);
   Object.values(state.targetTimers).forEach(t => clearTimeout(t));
   state.targetTimers = {};
-  stopBGM();
 
   const won = state.score >= 100;
 
@@ -1030,7 +1039,6 @@ function endGame() {
 // ═══════════════════════════════════════════
 leaveBtn.addEventListener('click', () => {
   clearGameTargets();
-  stopBGM();
   gameOverOverlay.classList.remove('active', 'win', 'lose');
   showScreen('levelSelect');
   updateLevelCards();
