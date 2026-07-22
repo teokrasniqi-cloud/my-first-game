@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Star Catcher</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    background: #0a0a1a;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ── Starfield Canvas ── */
+  #starfield {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── Main Container ── */
+  #app {
+    position: relative;
+    z-index: 1;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Screens ── */
+  .screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    text-align: center;
+    animation: fadeIn 0.4s ease;
+    width: 100%;
+    max-width: 700px;
+    padding: 20px;
+  }
+  .screen.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Titles ── */
+  .title {
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #ffd700, #ff6ec7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+  }
+  .subtitle {
+    color: #8892b0;
+    font-size: 16px;
+    margin-top: -12px;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 14px 40px;
+    font-size: 18px;
+    font-weight: 700;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    letter-spacing: 0.5px;
+    outline: none;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn:active { transform: scale(0.95); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #ffd700, #f0a500);
+    color: #1a1a2e;
+    box-shadow: 0 0 24px rgba(255, 215, 0, 0.35);
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.55);
+    transform: translateY(-2px);
+  }
+  .btn-primary:disabled {
+    background: #333;
+    color: #666;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-secondary {
+    background: rgba(255,255,255,0.08);
+    color: #ccd6f6;
+    border: 2px solid rgba(255,255,255,0.2);
+  }
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.15);
+    border-color: rgba(255,255,255,0.4);
+    box-shadow: 0 0 20px rgba(100, 200, 255, 0.2);
+  }
+
+  .btn-accent {
+    background: linear-gradient(135deg, #6c63ff, #e9428e);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(108, 99, 255, 0.3);
+  }
+  .btn-accent:hover {
+    box-shadow: 0 0 36px rgba(108, 99, 255, 0.5);
+    transform: translateY(-2px);
+  }
+
+  .btn-row { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+
+  /* ── Sound Toggle ── */
+  .btn-sound {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    background: rgba(10,10,26,0.7);
+    color: #ccd6f6;
+    font-size: 20px;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s ease;
+  }
+  .btn-sound:hover {
+    border-color: rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.1);
+  }
+  .btn-sound.muted {
+    color: #6c7a9e;
+    border-color: rgba(255,255,255,0.08);
+  }
+
+  /* ── Character Select ── */
+  .char-grid {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .char-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    padding: 24px 20px;
+    border-radius: 20px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    background: rgba(255,255,255,0.03);
+    min-width: 150px;
+  }
+  .char-card:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-4px);
+  }
+  .char-card.selected {
+    border-color: #ffd700;
+    background: rgba(255,215,0,0.08);
+    box-shadow: 0 0 30px rgba(255,215,0,0.2), 0 0 60px rgba(255,215,0,0.08);
+  }
+
+  .char-avatar {
+    width: 130px;
+    height: 180px;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    transition: all 0.3s ease;
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.1);
+  }
+  .char-card.selected .char-avatar {
+    border-color: #ffd700;
+    box-shadow: 0 0 25px rgba(255,215,0,0.3);
+    transform: scale(1.05);
+  }
+  .char-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .char-name {
+    color: #ccd6f6;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .char-card.selected .char-name { color: #ffd700; }
+
+  .char-desc {
+    color: #6c7a9e;
+    font-size: 12px;
+    max-width: 140px;
+  }
+
+  /* ── Level Select ── */
+  .planet-grid {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .planet-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 28px 18px;
+    border-radius: 20px;
+    border: 2px solid transparent;
+    background: rgba(255,255,255,0.03);
+    transition: all 0.3s ease;
+    min-width: 120px;
+  }
+  .planet-card:hover {
+    background: rgba(255,255,255,0.07);
+    transform: translateY(-4px);
+  }
+  .planet-card.locked {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .planet-sprite {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    position: relative;
+    transition: box-shadow 0.3s ease;
+  }
+  .planet-card:hover .planet-sprite {
+    box-shadow: 0 0 45px currentColor;
+  }
+  .planet-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 110px; height: 110px;
+    border-radius: 50%;
+    border: 3px solid;
+    border-color: currentColor transparent currentColor transparent;
+    transform: translate(-50%, -50%) rotateX(75deg);
+    opacity: 0.5;
+  }
+  .planet-label {
+    color: #ccd6f6;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .planet-hint {
+    color: #6c7a9e;
+    font-size: 12px;
+    margin-top: -6px;
+  }
+
+  /* ── Gameplay Screen ── */
+  #gameplay-screen {
+    width: 100%;
+    height: 100vh;
+    padding: 0;
+    max-width: none;
+    position: relative;
+    display: none;
+    background: url('images/background.jpg') center / cover no-repeat;
+  }
+  #gameplay-screen.active { display: block; }
+
+  .game-hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    z-index: 5;
+    backdrop-filter: blur(8px);
+    background: rgba(10,10,26,0.7);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .hud-left { display: flex; gap: 24px; align-items: center; }
+  .hud-stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ccd6f6;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .hud-stat .icon { font-size: 20px; }
+  .score-val { color: #ffd700; }
+  .timer-val {
+    color: #6c63ff;
+    font-variant-numeric: tabular-nums;
+    min-width: 40px;
+    text-align: center;
+  }
+  .timer-val.warning { color: #ff6b6b; animation: pulse 0.7s infinite; }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .game-area {
+    position: absolute;
+    top: 70px;
+    left: 0; right: 0;
+    bottom: 0;
+    cursor: crosshair;
+  }
+
+  /* ── Targets ── */
+  .target {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    animation: targetAppear 0.3s ease, targetGlow 1s ease-in-out infinite alternate;
+    transition: transform 0.1s ease;
+    z-index: 3;
+  }
+  .target::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px solid;
+    border-color: currentColor;
+    opacity: 0.5;
+    animation: targetRing 1.5s ease-out infinite;
+  }
+  .target::after {
+    content: '✦';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 22px;
+    color: #fff;
+    pointer-events: none;
+  }
+  @keyframes targetAppear {
+    from { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+  @keyframes targetGlow {
+    from { box-shadow: 0 0 8px currentColor, 0 0 16px currentColor; }
+    to   { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
+  }
+  @keyframes targetRing {
+    from { transform: scale(1); opacity: 0.6; }
+    to   { transform: scale(1.8); opacity: 0; }
+  }
+  .target.caught {
+    animation: targetPop 0.3s ease forwards;
+    pointer-events: none;
+  }
+  @keyframes targetPop {
+    from { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    to   { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+  }
+
+  /* ── Game Over Overlay ── */
+  #gameOverOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(10,10,26,0.85);
+    backdrop-filter: blur(6px);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    text-align: center;
+    animation: fadeIn 0.4s ease;
+  }
+  #gameOverOverlay.active { display: flex; }
+  #gameOverIcon { font-size: 72px; }
+  #gameOverTitle {
+    font-size: clamp(32px, 6vw, 48px);
+    font-weight: 800;
+  }
+  #gameOverOverlay.win #gameOverTitle {
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  #gameOverOverlay.lose #gameOverTitle {
+    background: linear-gradient(135deg, #8892b0, #6c7a9e);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  #gameOverScore {
+    font-size: 60px;
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 0 0 30px rgba(255,215,0,0.4);
+  }
+  #gameOverOverlay .btn-row { margin-top: 8px; }
+
+  /* ── Sparkle Burst ── */
+  .sparkle {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10;
+    font-size: 18px;
+    animation: sparkleFly 0.7s ease-out forwards;
+  }
+  @keyframes sparkleFly {
+    0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--sx), var(--sy)) scale(0); opacity: 0; }
+  }
+  .score-pop {
+    position: absolute;
+    pointer-events: none;
+    z-index: 10;
+    color: #ffd700;
+    font-weight: 800;
+    font-size: 20px;
+    animation: scorePop 0.8s ease-out forwards;
+  }
+  @keyframes scorePop {
+    0%   { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-60px); opacity: 0; }
+  }
+
+  /* ── Win Celebration Particles ── */
+  .celebrate-particle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 50;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    animation: confettiFall var(--dur) ease-out forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+    80%  { opacity: 1; }
+    100% { transform: translateY(105vh) rotate(var(--rot)) scale(0.3); opacity: 0; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 500px) {
+    .char-grid, .planet-grid { gap: 16px; }
+    .char-card, .planet-card { min-width: 90px; padding: 16px 10px; }
+    .char-avatar { width: 100px; height: 140px; }
+    .planet-sprite { width: 60px; height: 60px; }
+    .game-hud { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+    .hud-stat { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<!-- 🔊 Sound Toggle -->
+<button class="btn-sound" id="btnSoundToggle" title="Toggle Sound">🔊</button>
+
+<!-- Hidden BGM audio -->
+<audio id="bgm" loop preload="auto" style="display:none;">
+  <source src="audio/bgm.mp3" type="audio/mpeg">
+</audio>
+
+<div id="app">
+
+  <!-- ═══════ SCREEN 1: CHARACTER SELECT ═══════ -->
+  <div id="char-select-screen" class="screen active">
+    <h1 class="title">Choose Your Character</h1>
+    <p class="subtitle">Select your pilot to begin the mission</p>
+    <div class="char-grid">
+      <div class="char-card" data-character="explorer">
+        <div class="char-avatar">
+          <img src="images/explorer.png" alt="Explorer" draggable="false">
+        </div>
+        <span class="char-name">Explorer</span>
+        <span class="char-desc">Swift and precise — born to chart the unknown</span>
+      </div>
+      <div class="char-card" data-character="scout">
+        <div class="char-avatar">
+          <img src="images/scout.png" alt="Scout" draggable="false">
+        </div>
+        <span class="char-name">Scout</span>
+        <span class="char-desc">Sharp-eyed and steady — nothing escapes them</span>
+      </div>
+      <div class="char-card" data-character="pilot">
+        <div class="char-avatar">
+          <img src="images/pilot.png" alt="Pilot" draggable="false">
+        </div>
+        <span class="char-name">Pilot</span>
+        <span class="char-desc">Bold and daring — thrives in the heart of action</span>
+      </div>
+    </div>
+    <button id="start-btn" class="btn btn-primary" disabled>Start Game</button>
+  </div>
+
+  <!-- ═══════ SCREEN 2: LEVEL SELECT ═══════ -->
+  <div id="level-select-screen" class="screen">
+    <h1 class="title">Select a Level to Begin</h1>
+    <p class="subtitle" id="level-char-label"></p>
+    <div class="planet-grid">
+      <div class="planet-card" data-level="1">
+        <div class="planet-sprite" style="background: radial-gradient(circle at 40% 30%, #ff6b6b, #8b0000); color: #ff6b6b;">
+          <div class="planet-ring"></div>
+        </div>
+        <span class="planet-label">Level 1</span>
+        <span class="planet-hint">Nova Sector</span>
+      </div>
+      <div class="planet-card" data-level="2">
+        <div class="planet-sprite" style="background: radial-gradient(circle at 40% 30%, #4fc3f7, #0d47a1); color: #4fc3f7;">
+          <div class="planet-ring"></div>
+        </div>
+        <span class="planet-label">Level 2</span>
+        <span class="planet-hint">Nebula Drift</span>
+      </div>
+      <div class="planet-card" data-level="3">
+        <div class="planet-sprite" style="background: radial-gradient(circle at 40% 30%, #b39ddb, #4a148c); color: #b39ddb;">
+          <div class="planet-ring"></div>
+        </div>
+        <span class="planet-label">Level 3</span>
+        <span class="planet-hint">Void's Edge</span>
+      </div>
+    </div>
+    <button id="back-char-btn" class="btn btn-secondary">← Back</button>
+  </div>
+
+  <!-- ═══════ SCREEN 3: GAMEPLAY ═══════ -->
+  <div id="gameplay-screen">
+    <div class="game-hud">
+      <div class="hud-left">
+        <div class="hud-stat">
+          <span class="icon">⭐</span>
+          <span>Score: <span class="score-val" id="score-display">0</span> / 100</span>
+        </div>
+        <div class="hud-stat">
+          <span class="icon">⏱️</span>
+          <span>Time: <span class="timer-val" id="timer-display">30</span>s</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <span class="hud-stat" style="font-size:13px;color:#6c7a9e;" id="char-indicator"></span>
+        <button id="leave-btn" class="btn btn-secondary" style="padding:8px 20px;font-size:14px;">Leave</button>
+      </div>
+    </div>
+    <div class="game-area" id="game-area"></div>
+  </div>
+
+</div>
+
+<!-- ═══════ GAME OVER OVERLAY ═══════ -->
+<div id="gameOverOverlay">
+  <div id="gameOverIcon"></div>
+  <h1 id="gameOverTitle"></h1>
+  <div id="gameOverScore"></div>
+  <div class="btn-row" id="gameOverBtns"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  AUDIO
+// ═══════════════════════════════════════════
+const bgm = document.getElementById('bgm');
+const btnSoundToggle = document.getElementById('btnSoundToggle');
+let soundOn = true;
+
+function playBGM() {
+  if (soundOn) {
+    bgm.volume = 0.4;
+    bgm.play().catch(() => {});
+  }
+}
+
+function stopBGM() {
+  bgm.pause();
+  bgm.currentTime = 0;
+}
+
+btnSoundToggle.addEventListener('click', () => {
+  soundOn = !soundOn;
+  btnSoundToggle.textContent = soundOn ? '🔊' : '🔇';
+  btnSoundToggle.classList.toggle('muted', !soundOn);
+  if (soundOn) {
+    if (state.gameActive) playBGM();
+  } else {
+    stopBGM();
+  }
+});
+
+// ═══════════════════════════════════════════
+//  STARFIELD BACKGROUND
+// ═══════════════════════════════════════════
+const canvas = document.getElementById('starfield');
+const ctx = canvas.getContext('2d');
+let stars = [];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  initStars();
+});
+
+function initStars() {
+  stars = [];
+  const count = Math.floor((canvas.width * canvas.height) / 1800);
+  for (let i = 0; i < count; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.8 + 0.4,
+      twinkleSpeed: Math.random() * 0.015 + 0.005,
+      twinkleOffset: Math.random() * Math.PI * 2,
+      hue: Math.random() < 0.08 ? 40 + Math.random() * 20 : 220 + Math.random() * 40
+    });
+  }
+}
+initStars();
+
+let starTime = 0;
+function drawStars(ts) {
+  starTime = ts;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const s of stars) {
+    const alpha = 0.35 + 0.65 * (Math.sin(starTime * s.twinkleSpeed + s.twinkleOffset) * 0.5 + 0.5);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${s.hue}, 80%, 75%, ${alpha})`;
+    ctx.fill();
+  }
+  requestAnimationFrame(drawStars);
+}
+requestAnimationFrame(drawStars);
+
+// ═══════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════
+const state = {
+  character: null,
+  level: null,
+  score: 0,
+  timeLeft: 30,
+  timerInterval: null,
+  targetInterval: null,
+  targetTimers: {},
+  gameActive: false,
+  targetIdCounter: 0
+};
+
+const levelWon = { 1: false, 2: false, 3: false };
+
+// ── DOM refs ──
+const screens = {
+  charSelect:  document.getElementById('char-select-screen'),
+  levelSelect: document.getElementById('level-select-screen'),
+  gameplay:    document.getElementById('gameplay-screen')
+};
+const startBtn     = document.getElementById('start-btn');
+const backCharBtn  = document.getElementById('back-char-btn');
+const leaveBtn     = document.getElementById('leave-btn');
+const gameArea     = document.getElementById('game-area');
+const scoreDisplay = document.getElementById('score-display');
+const timerDisplay = document.getElementById('timer-display');
+const charIndicator= document.getElementById('char-indicator');
+const levelCharLabel = document.getElementById('level-char-label');
+const gameOverOverlay = document.getElementById('gameOverOverlay');
+const gameOverIcon   = document.getElementById('gameOverIcon');
+const gameOverTitle  = document.getElementById('gameOverTitle');
+const gameOverScore  = document.getElementById('gameOverScore');
+const gameOverBtns   = document.getElementById('gameOverBtns');
+
+// ═══════════════════════════════════════════
+//  SCREEN SWITCHING
+// ═══════════════════════════════════════════
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  if (screens[name]) screens[name].classList.add('active');
+}
+
+// ═══════════════════════════════════════════
+//  SCREEN 1: CHARACTER SELECT
+// ═══════════════════════════════════════════
+const charCards = document.querySelectorAll('.char-card');
+
+charCards.forEach(card => {
+  card.addEventListener('click', () => {
+    charCards.forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    state.character = card.dataset.character;
+    startBtn.disabled = false;
+  });
+});
+
+startBtn.addEventListener('click', () => {
+  if (!state.character) return;
+  showScreen('levelSelect');
+  levelCharLabel.textContent = `Playing as: ${capitalize(state.character)}`;
+  updateLevelCards();
+});
+
+// ═══════════════════════════════════════════
+//  SCREEN 2: LEVEL SELECT
+// ═══════════════════════════════════════════
+const planetCards = document.querySelectorAll('.planet-card');
+
+function updateLevelCards() {
+  planetCards.forEach(card => {
+    const lv = parseInt(card.dataset.level);
+    if (lv === 1) {
+      card.classList.remove('locked');
+      return;
+    }
+    if (levelWon[lv - 1]) {
+      card.classList.remove('locked');
+    } else {
+      card.classList.add('locked');
+    }
+  });
+}
+
+updateLevelCards();
+
+planetCards.forEach(card => {
+  card.addEventListener('click', () => {
+    const lv = parseInt(card.dataset.level);
+    if (lv > 1 && !levelWon[lv - 1]) return;
+    state.level = lv;
+    startLevel(lv);
+  });
+});
+
+backCharBtn.addEventListener('click', () => {
+  showScreen('charSelect');
+  stopBGM();
+});
+
+// ═══════════════════════════════════════════
+//  START LEVEL
+// ═══════════════════════════════════════════
+function startLevel(level) {
+  state.score = 0;
+  state.timeLeft = 30;
+  state.gameActive = true;
+  state.targetIdCounter = 0;
+  state.targetTimers = {};
+
+  scoreDisplay.textContent = '0';
+  timerDisplay.textContent = '30';
+  timerDisplay.classList.remove('warning');
+
+  gameArea.querySelectorAll('.target,.sparkle,.score-pop').forEach(el => el.remove());
+  gameOverOverlay.classList.remove('active', 'win', 'lose');
+
+  charIndicator.textContent = `${capitalize(state.character)} — Level ${level}`;
+
+  showScreen('gameplay');
+
+  spawnTarget();
+  state.targetInterval = setInterval(spawnTarget, 1200);
+  state.timerInterval = setInterval(tickTimer, 1000);
+
+  playBGM();
+}
+
+// ═══════════════════════════════════════════
+//  TIMER
+// ═══════════════════════════════════════════
+function tickTimer() {
+  state.timeLeft--;
+  timerDisplay.textContent = state.timeLeft;
+
+  if (state.timeLeft <= 10) {
+    timerDisplay.classList.add('warning');
+  }
+
+  if (state.timeLeft <= 0) {
+    endGame();
+  }
+}
+
+// ═══════════════════════════════════════════
+//  TARGET SPAWNING
+// ═══════════════════════════════════════════
+function spawnTarget() {
+  if (!state.gameActive) return;
+
+  const areaRect = gameArea.getBoundingClientRect();
+  const margin = 50;
+  const maxX = areaRect.width - margin;
+  const maxY = areaRect.height - margin;
+
+  if (maxX < 80 || maxY < 80) return;
+
+  const x = margin + Math.random() * (maxX - margin);
+  const y = margin + Math.random() * (maxY - margin);
+  const id = state.targetIdCounter++;
+
+  const colors = ['#ffd700','#00e5ff','#76ff03','#ff4081','#ff6b6b','#b39ddb','#4fc3f7','#ffab40'];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+
+  const target = document.createElement('div');
+  target.className = 'target';
+  target.dataset.id = id;
+  target.style.left = x + 'px';
+  target.style.top = y + 'px';
+  target.style.color = color;
+  target.style.boxShadow = `0 0 12px ${color}, 0 0 28px ${color}`;
+
+  target.addEventListener('click', (e) => catchTarget(target, id, e));
+  gameArea.appendChild(target);
+
+  const timeout = setTimeout(() => {
+    removeTarget(target, id, false);
+  }, 2000);
+  state.targetTimers[id] = timeout;
+}
+
+function catchTarget(target, id, event) {
+  if (!state.gameActive) return;
+  const tid = parseInt(target.dataset.id);
+  if (state.targetTimers[tid] === undefined) return;
+
+  clearTimeout(state.targetTimers[tid]);
+  delete state.targetTimers[tid];
+
+  state.score += 10;
+  scoreDisplay.textContent = state.score;
+
+  spawnSparkles(event.clientX, event.clientY);
+  spawnScorePop(event.clientX, event.clientY);
+
+  target.classList.add('caught');
+  setTimeout(() => {
+    if (target.parentNode) target.remove();
+  }, 300);
+
+  if (state.score >= 100) {
+    endGame();
+  }
+}
+
+function removeTarget(target, id, wasCaught) {
+  if (state.targetTimers[id] !== undefined) {
+    clearTimeout(state.targetTimers[id]);
+    delete state.targetTimers[id];
+  }
+  if (!wasCaught && target.parentNode) {
+    target.style.opacity = '0';
+    target.style.transition = 'opacity 0.3s ease';
+    setTimeout(() => {
+      if (target.parentNode) target.remove();
+    }, 300);
+  }
+}
+
+// ═══════════════════════════════════════════
+//  VISUAL EFFECTS
+// ═══════════════════════════════════════════
+function spawnSparkles(cx, cy) {
+  const symbols = ['✦','✧','⋆','✶','★','·'];
+  for (let i = 0; i < 10; i++) {
+    const sparkle = document.createElement('span');
+    sparkle.className = 'sparkle';
+    sparkle.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+    sparkle.style.left = cx + 'px';
+    sparkle.style.top = cy + 'px';
+    sparkle.style.color = ['#ffd700','#ff4081','#00e5ff','#76ff03'][Math.floor(Math.random() * 4)];
+    sparkle.style.fontSize = (12 + Math.random() * 16) + 'px';
+    sparkle.style.setProperty('--sx', (Math.random() - 0.5) * 100 + 'px');
+    sparkle.style.setProperty('--sy', (Math.random() - 0.5) * 100 + 'px');
+    document.body.appendChild(sparkle);
+    setTimeout(() => sparkle.remove(), 700);
+  }
+}
+
+function spawnScorePop(cx, cy) {
+  const pop = document.createElement('span');
+  pop.className = 'score-pop';
+  pop.textContent = '+10';
+  pop.style.left = cx + 'px';
+  pop.style.top = cy + 'px';
+  document.body.appendChild(pop);
+  setTimeout(() => pop.remove(), 800);
+}
+
+function spawnCelebration() {
+  const colors = ['#ffd700','#ff4081','#00e5ff','#76ff03','#ff6b6b','#b39ddb','#ffab40','#4fc3f7'];
+  for (let i = 0; i < 60; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'celebrate-particle';
+    particle.style.left = Math.random() * 100 + 'vw';
+    particle.style.top = -(Math.random() * 40) + 'px';
+    particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+    particle.style.width = (6 + Math.random() * 10) + 'px';
+    particle.style.height = (6 + Math.random() * 10) + 'px';
+    particle.style.setProperty('--dur', (1.5 + Math.random() * 2.5) + 's');
+    particle.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+    particle.style.animationDelay = Math.random() * 0.8 + 's';
+    document.body.appendChild(particle);
+    setTimeout(() => particle.remove(), 3500);
+  }
+}
+
+function clearGameTargets() {
+  state.gameActive = false;
+  clearInterval(state.timerInterval);
+  clearInterval(state.targetInterval);
+  Object.values(state.targetTimers).forEach(t => clearTimeout(t));
+  state.targetTimers = {};
+  gameArea.querySelectorAll('.target,.sparkle,.score-pop').forEach(el => el.remove());
+}
+
+// ═══════════════════════════════════════════
+//  END GAME
+// ═══════════════════════════════════════════
+function endGame() {
+  state.gameActive = false;
+  clearInterval(state.timerInterval);
+  clearInterval(state.targetInterval);
+  Object.values(state.targetTimers).forEach(t => clearTimeout(t));
+  state.targetTimers = {};
+  stopBGM();
+
+  const won = state.score >= 100;
+
+  if (won) {
+    levelWon[state.level] = true;
+    updateLevelCards();
+  }
+
+  gameOverOverlay.classList.remove('win', 'lose');
+  gameOverScore.textContent = state.score;
+  gameOverBtns.innerHTML = '';
+
+  if (won) {
+    gameOverOverlay.classList.add('win');
+    gameOverIcon.textContent = '🏆';
+    gameOverTitle.textContent = 'Level Complete!';
+    spawnCelebration();
+
+    const playAgainBtn = document.createElement('button');
+    playAgainBtn.className = 'btn btn-primary';
+    playAgainBtn.textContent = 'Play Again';
+    playAgainBtn.addEventListener('click', () => {
+      gameOverOverlay.classList.remove('active', 'win', 'lose');
+      startLevel(state.level);
+    });
+    gameOverBtns.appendChild(playAgainBtn);
+
+    if (state.level < 3) {
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'btn btn-accent';
+      nextBtn.textContent = 'Next Level →';
+      nextBtn.addEventListener('click', () => {
+        state.level = state.level + 1;
+        gameOverOverlay.classList.remove('active', 'win', 'lose');
+        startLevel(state.level);
+      });
+      gameOverBtns.appendChild(nextBtn);
+    }
+  } else {
+    gameOverOverlay.classList.add('lose');
+    gameOverIcon.textContent = '⏰';
+    gameOverTitle.textContent = 'Out of Time — Try Again';
+
+    const playAgainBtn = document.createElement('button');
+    playAgainBtn.className = 'btn btn-primary';
+    playAgainBtn.textContent = 'Play Again';
+    playAgainBtn.addEventListener('click', () => {
+      gameOverOverlay.classList.remove('active', 'win', 'lose');
+      startLevel(state.level);
+    });
+    gameOverBtns.appendChild(playAgainBtn);
+
+    const backBtn = document.createElement('button');
+    backBtn.className = 'btn btn-secondary';
+    backBtn.textContent = '← Level Select';
+    backBtn.addEventListener('click', () => {
+      gameOverOverlay.classList.remove('active', 'win', 'lose');
+      showScreen('levelSelect');
+      updateLevelCards();
+    });
+    gameOverBtns.appendChild(backBtn);
+  }
+
+  gameOverOverlay.classList.add('active');
+}
+
+// ═══════════════════════════════════════════
+//  LEAVE BUTTON
+// ═══════════════════════════════════════════
+leaveBtn.addEventListener('click', () => {
+  clearGameTargets();
+  stopBGM();
+  gameOverOverlay.classList.remove('active', 'win', 'lose');
+  showScreen('levelSelect');
+  updateLevelCards();
+});
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function getLevelName(lv) {
+  return {1:'Nova Sector', 2:'Nebula Drift', 3:"Void's Edge"}[lv] || `Level ${lv}`;
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+startBtn.disabled = true;
+updateLevelCards();
+</script>
+
+</body>
+</html>
