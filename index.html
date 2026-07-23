@@ -226,6 +226,83 @@
     max-width: 140px;
   }
 
+  /* ── NPC Section ── */
+  .npc-section {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 20px 24px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    max-width: 560px;
+    width: 100%;
+  }
+  .npc-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(108, 99, 255, 0.08);
+    border: 1px solid rgba(108, 99, 255, 0.25);
+  }
+  .npc-avatar {
+    width: 90px;
+    height: 120px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid rgba(108, 99, 255, 0.3);
+  }
+  .npc-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .npc-name {
+    color: #b39ddb;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .npc-badge {
+    color: #6c7a9e;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: rgba(108,99,255,0.15);
+    padding: 2px 10px;
+    border-radius: 20px;
+  }
+
+  .speech-bubble {
+    position: relative;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 18px;
+    padding: 16px 20px;
+    color: #ccd6f6;
+    font-size: 14px;
+    font-style: italic;
+    line-height: 1.5;
+    max-width: 340px;
+    text-align: left;
+  }
+  .speech-bubble::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 28px;
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 10px solid rgba(255,255,255,0.06);
+  }
+
   /* ── Level Select ── */
   .planet-grid {
     display: flex;
@@ -530,6 +607,16 @@
         <span class="char-name">Pilot</span>
         <span class="char-desc">Bold and daring — thrives in the heart of action</span>
       </div>
+    </div>
+    <div class="npc-section">
+      <div class="npc-card">
+        <div class="npc-avatar">
+          <img src="lucid-origin_A_veteran_space_pilot_character_full_body_simple_cartoon_style_clean_line_art_fl-0-removebg-preview.png" alt="Captain Vega" draggable="false">
+        </div>
+        <span class="npc-name">Captain Vega</span>
+        <span class="npc-badge">NPC</span>
+      </div>
+      <div class="speech-bubble" id="vega-dialogue">New around here? Click fast and you will do fine.</div>
     </div>
     <button id="start-btn" class="btn btn-primary" disabled>Start Game</button>
   </div>
@@ -974,6 +1061,9 @@ function endGame() {
   if (won) {
     levelWon[state.level] = true;
     updateLevelCards();
+    localStorage.setItem(STORAGE_KEY, 'won');
+  } else {
+    localStorage.setItem(STORAGE_KEY, 'lost');
   }
 
   gameOverOverlay.classList.remove('win', 'lose');
@@ -1056,10 +1146,30 @@ function getLevelName(lv) {
 }
 
 // ═══════════════════════════════════════════
+//  CAPTAIN VEGA — NPC DIALOGUE
+// ═══════════════════════════════════════════
+const STORAGE_KEY = 'starCatcherLastResult';
+
+function updateVegaDialogue() {
+  const lastResult = localStorage.getItem(STORAGE_KEY);
+  const bubble = document.getElementById('vega-dialogue');
+  if (!bubble) return;
+
+  if (lastResult === 'won') {
+    bubble.textContent = "Back again, champion? Let's see if you can beat your own score.";
+  } else if (lastResult === 'lost') {
+    bubble.textContent = 'Do not worry about last time. Everyone has a rough round. Try again.';
+  } else {
+    bubble.textContent = 'New around here? Click fast and you will do fine.';
+  }
+}
+
+// ═══════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════
 startBtn.disabled = true;
 updateLevelCards();
+updateVegaDialogue();
 </script>
 
 </body>
